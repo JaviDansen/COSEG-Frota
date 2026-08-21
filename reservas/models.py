@@ -10,8 +10,8 @@ class Marca(models.Model):
 
 class Veiculo(models.Model):
     class Tipo(models.TextChoices):
-        VAN = "Van", "Van"
-        CARRO_DE_PASSEIO = "Carro de passeio", "Carro de passeio"
+        LEVE = "VL", "Veículo Leve"
+        COLETIVO = "VC", "Veículo Coletivo (Van)"
 
     codigo = models.CharField(max_length=10, unique=True)
     placa = models.CharField(max_length=10, unique=True)
@@ -22,7 +22,7 @@ class Veiculo(models.Model):
     marca = models.ForeignKey(
         Marca, on_delete=models.PROTECT, related_name="veiculos"
     )
-    tipo = models.CharField(max_length=20, choices=Tipo.choices)
+    tipo = models.CharField(max_length=2, choices=Tipo.choices)
 
     def __str__(self):
         return f"{self.codigo} - {self.modelo} ({self.placa})"
