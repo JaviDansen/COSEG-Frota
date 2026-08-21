@@ -12,10 +12,10 @@ class MarcaAdmin(admin.ModelAdmin):
 
 @admin.register(Veiculo)
 class VeiculoAdmin(admin.ModelAdmin):
-    list_display = ("placa", "modelo", "marca", "tipo", "capacidade", "ano")
-    search_fields = ("placa", "modelo")
+    list_display = ("codigo", "placa", "modelo", "marca", "tipo", "capacidade", "ano")
+    search_fields = ("codigo", "placa", "modelo")
     list_filter = ("tipo", "marca")
-    ordering = ("placa",)
+    ordering = ("codigo",)
 
 
 @admin.register(Reserva)

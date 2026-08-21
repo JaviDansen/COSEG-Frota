@@ -13,6 +13,7 @@ class Veiculo(models.Model):
         VAN = "Van", "Van"
         CARRO_DE_PASSEIO = "Carro de passeio", "Carro de passeio"
 
+    codigo = models.CharField(max_length=10, unique=True)
     placa = models.CharField(max_length=10, unique=True)
     modelo = models.CharField(max_length=100)
     capacidade = models.PositiveIntegerField()
@@ -24,7 +25,7 @@ class Veiculo(models.Model):
     tipo = models.CharField(max_length=20, choices=Tipo.choices)
 
     def __str__(self):
-        return f"{self.modelo} ({self.placa})"
+        return f"{self.codigo} - {self.modelo} ({self.placa})"
 
 
 class Reserva(models.Model):
