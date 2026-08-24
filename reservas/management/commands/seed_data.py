@@ -56,9 +56,9 @@ class Command(BaseCommand):
 
         reservas = (
             ("VL-01", "18/08/2026 08:00", "18/08/2026 10:00", "reunião administrativa", "João Silva", "Administrativo", "COSEG", "Reitoria", 3),
-            ("VL-03", "18/08/2026 14:00", "18/08/2026 17:00", "visita técnica", "Maria Santos", "Engenharia", "COSEG", "Campus Universitário", 4),
-            ("VC-01", "19/08/2026 07:00", "19/08/2026 12:00", "transporte de equipe", "Carlos Oliveira", "Operações", "COSEG", "Unidade Operacional", 15),
-            ("VL-05", "20/08/2026 09:00", "20/08/2026 11:00", "atividade externa", "Ana Costa", "Administrativo", "COSEG", "Centro Administrativo", 2),
+            ("VL-03", "18/08/2026 13:00", "18/08/2026 15:00", "inspeção técnica", "Maria Santos", "Engenharia", "COSEG", "Campus Universitário", 4),
+            ("VC-01", "19/08/2026 09:00", "19/08/2026 12:00", "treinamento", "Carlos Oliveira", "Operações", "COSEG", "Unidade Operacional", 15),
+            ("VL-05", "20/08/2026 14:00", "20/08/2026 17:00", "visita externa", "Ana Costa", "Administrativo", "COSEG", "Centro Administrativo", 2),
         )
 
         for (
@@ -72,14 +72,13 @@ class Command(BaseCommand):
             destino,
             numero_passageiros,
         ) in reservas:
-            data_hora_saida = data_hora(saida)
             Reserva.objects.update_or_create(
                 veiculo=veiculos_por_codigo[codigo_veiculo],
-                data_hora_saida=data_hora_saida,
+                solicitante=solicitante,
                 defaults={
+                    "data_hora_saida": data_hora(saida),
                     "data_hora_retorno": data_hora(retorno),
                     "atividade": atividade,
-                    "solicitante": solicitante,
                     "setor": setor,
                     "origem": origem,
                     "destino": destino,
