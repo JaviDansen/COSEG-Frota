@@ -3,6 +3,7 @@ import json
 from django.core.exceptions import ValidationError
 from django.db import IntegrityError
 from django.db.models import Count
+from django.db.models.deletion import ProtectedError
 from django.http import JsonResponse
 from django.utils import timezone
 from django.utils.dateparse import parse_datetime
@@ -50,7 +51,8 @@ def marca_json(marca):
 
 def veiculo_json(veiculo):
     return {
-        "id": veiculo.id, "placa": veiculo.placa, "modelo": veiculo.modelo,
+        "id": veiculo.id, "codigo": veiculo.codigo, "placa": veiculo.placa,
+        "modelo": veiculo.modelo,
         "capacidade": veiculo.capacidade, "ano": veiculo.ano, "cor": veiculo.cor,
         "tipo": veiculo.tipo, "marca_id": veiculo.marca_id,
         "marca": marca_json(veiculo.marca),
@@ -77,20 +79,23 @@ def buscar(modelo, identificador, mensagem, relacionamentos=()):
 
 
 @csrf_exempt
-def marcas(request, marca_id=None):
-    if marca_id is None:
-        if request.method == "GET":
-            return JsonResponse({"marcas": [marca_json(marca) for marca in Marca.objects.all()]})
-        if request.method == "POST":
-            dados, erro = ler_json(request)
-            if erro:
-                return erro
-            if erro := obrigatorios(dados, ["nome"]):
-                return erro
-            marca = Marca(nome=dados["nome"])
-            return salvar(marca) or JsonResponse(marca_json(marca), status=201)
-        return resposta_erro("Método não permitido.", status=405)
+def marcas(request):
+    if request.method == "GET":
+        return JsonResponse({"marcas": [marca_json(marca) for marca in Marca.objects.all()]})
+    if request.method == "POST":
+        dados, erro = ler_json(request)
+        if erro:
+            return erro
+        nome = dados.get("nome")
+        if not isinstance(nome, str) or not nome.strip():
+            return resposta_erro("O campo 'nome' é obrigatório e não pode estar vazio.")
+        marca = Marca(nome=nome.strip())
+        return salvar(marca) or JsonResponse(marca_json(marca), status=201)
+    return resposta_erro("Método não permitido.", status=405)
 
+
+@csrf_exempt
+def marca_detalhe(request, marca_id):
     marca = buscar(Marca, marca_id, "Marca não encontrada.")
     if isinstance(marca, JsonResponse):
         return marca
@@ -100,19 +105,29 @@ def marcas(request, marca_id=None):
         dados, erro = ler_json(request)
         if erro:
             return erro
-        if erro := obrigatorios(dados, ["nome"]):
-            return erro
-        marca.nome = dados["nome"]
+        nome = dados.get("nome")
+        if not isinstance(nome, str) or not nome.strip():
+            return resposta_erro("O campo 'nome' é obrigatório e não pode estar vazio.")
+        marca.nome = nome.strip()
         return salvar(marca) or JsonResponse(marca_json(marca))
     if request.method == "DELETE":
-        if marca.veiculos.exists():
+        try:
+            marca.delete()
+        except ProtectedError:
             return resposta_erro("Não é possível excluir uma marca que possui veículos.", status=409)
-        marca.delete()
         return JsonResponse({"mensagem": "Marca excluída com sucesso."})
     return resposta_erro("Método não permitido.", status=405)
 
 
 def preencher_veiculo(veiculo, dados):
+    codigo = dados["codigo"]
+    if not isinstance(codigo, str) or not codigo.strip():
+        return resposta_erro("O campo 'codigo' é obrigatório e não pode estar vazio.")
+    codigo = codigo.strip()
+    if Veiculo.objects.filter(codigo=codigo).exclude(pk=veiculo.pk).exists():
+        return resposta_erro("Já existe um veículo com este código.", status=409)
+
+    veiculo.codigo = codigo
     for campo in ("placa", "modelo", "capacidade", "ano", "cor", "tipo"):
         setattr(veiculo, campo, dados[campo])
     marca = buscar(Marca, dados["marca_id"], "Marca não encontrada.")
@@ -123,7 +138,7 @@ def preencher_veiculo(veiculo, dados):
 
 @csrf_exempt
 def veiculos(request, veiculo_id=None):
-    campos = ["placa", "modelo", "capacidade", "ano", "cor", "tipo", "marca_id"]
+    campos = ["codigo", "placa", "modelo", "capacidade", "ano", "cor", "tipo", "marca_id"]
     if veiculo_id is None:
         if request.method == "GET":
             itens = Veiculo.objects.select_related("marca")
@@ -255,9 +270,18 @@ def dashboard(request):
     for reserva in Reserva.objects.only("data_hora_saida"):
         trimestre = ((reserva.data_hora_saida.month - 1) // 3) + 1
         por_trimestre[f"{trimestre}º trimestre"] += 1
-    por_tipo = {"Van": 0, "Carro de passeio": 0}
+    por_tipo = {
+        Veiculo.Tipo.LEVE.label: 0,
+        Veiculo.Tipo.COLETIVO.label: 0,
+    }
+    rotulos_por_tipo = {
+        Veiculo.Tipo.LEVE: Veiculo.Tipo.LEVE.label,
+        Veiculo.Tipo.COLETIVO: Veiculo.Tipo.COLETIVO.label,
+    }
     for item in Reserva.objects.values("veiculo__tipo").annotate(total=Count("id")):
-        por_tipo[item["veiculo__tipo"]] = item["total"]
+        rotulo = rotulos_por_tipo.get(item["veiculo__tipo"])
+        if rotulo:
+            por_tipo[rotulo] = item["total"]
     return JsonResponse({
         "total_reservas": Reserva.objects.count(),
         "total_veiculos": Veiculo.objects.count(),
