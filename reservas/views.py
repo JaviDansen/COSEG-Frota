@@ -286,12 +286,15 @@ def dashboard(request):
         rotulo = rotulos_por_tipo.get(item["veiculo__tipo"])
         if rotulo:
             por_tipo[rotulo] = item["total"]
-    return JsonResponse({
-        "total_reservas": Reserva.objects.count(),
-        "total_veiculos": Veiculo.objects.count(),
-        "reservas_por_trimestre": por_trimestre,
-        "reservas_por_tipo_veiculo": por_tipo,
-    })
+    return JsonResponse(
+        {
+            "total_reservas": Reserva.objects.count(),
+            "total_veiculos": Veiculo.objects.count(),
+            "reservas_por_trimestre": por_trimestre,
+            "reservas_por_tipo_veiculo": por_tipo,
+        },
+        json_dumps_params={"ensure_ascii": False},
+    )
 
 
 @csrf_exempt
