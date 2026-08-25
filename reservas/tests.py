@@ -136,6 +136,35 @@ class ReservasApiTests(TestCase):
         self.assertEqual(resposta.status_code, 400)
         self.assertEqual(Reserva.objects.count(), 0)
 
+    def test_reserva_com_19_passageiros_e_recusada(self):
+        resposta = self.post_json(
+            reverse("reservas"), self.reserva_payload(numero_passageiros=19)
+        )
+
+        self.assertEqual(resposta.status_code, 400)
+        self.assertEqual(
+            resposta.json()["erro"],
+            "A quantidade de passageiros não pode ser superior a 18.",
+        )
+        self.assertEqual(Reserva.objects.count(), 0)
+
+    def test_reserva_com_18_passageiros_em_veiculo_coletivo_e_permitida(self):
+        resposta = self.post_json(
+            reverse("reservas"),
+            self.reserva_payload(
+                veiculo_id=self.veiculo_coletivo.id,
+                numero_passageiros=18,
+            ),
+        )
+
+        self.assertEqual(resposta.status_code, 201)
+        self.assertTrue(
+            Reserva.objects.filter(
+                veiculo=self.veiculo_coletivo,
+                numero_passageiros=18,
+            ).exists()
+        )
+
     def test_reserva_com_retorno_anterior_a_saida_e_recusada(self):
         resposta = self.post_json(
             reverse("reservas"),
@@ -238,6 +267,33 @@ class ReservasApiTests(TestCase):
         reserva.refresh_from_db()
         self.assertEqual(reserva.numero_passageiros, 3)
 
+    def test_put_reserva_com_19_passageiros_mantem_quantidade_original(self):
+        reserva = Reserva.objects.create(
+            solicitante="João Silva",
+            setor="Administrativo",
+            atividade="Reunião",
+            origem="COSEG",
+            destino="Reitoria",
+            veiculo=self.veiculo_leve,
+            numero_passageiros=3,
+            data_hora_saida=self.inicio,
+            data_hora_retorno=self.inicio + timedelta(hours=2),
+        )
+
+        resposta = self.client.put(
+            reverse("reserva-detalhe", args=[reserva.id]),
+            data=json.dumps(self.reserva_payload(numero_passageiros=19)),
+            content_type="application/json",
+        )
+
+        self.assertEqual(resposta.status_code, 400)
+        self.assertEqual(
+            resposta.json()["erro"],
+            "A quantidade de passageiros não pode ser superior a 18.",
+        )
+        reserva.refresh_from_db()
+        self.assertEqual(reserva.numero_passageiros, 3)
+
     def test_disponibilidade_filtra_capacidade_e_conflito(self):
         Reserva.objects.create(
             solicitante="João Silva",
@@ -265,6 +321,36 @@ class ReservasApiTests(TestCase):
         self.assertNotIn(self.veiculo_leve.codigo, codigos)
         self.assertNotIn(self.veiculo_insuficiente.codigo, codigos)
         self.assertIn(self.veiculo_coletivo.codigo, codigos)
+
+    def test_disponibilidade_com_19_passageiros_e_recusada(self):
+        resposta = self.client.get(
+            reverse("disponibilidade"),
+            {
+                "data_hora_saida": self.inicio.isoformat(),
+                "data_hora_retorno": (self.inicio + timedelta(hours=2)).isoformat(),
+                "numero_passageiros": 19,
+            },
+        )
+
+        self.assertEqual(resposta.status_code, 400)
+        self.assertEqual(
+            resposta.json()["erro"],
+            "A quantidade de passageiros não pode ser superior a 18.",
+        )
+
+    def test_disponibilidade_com_18_passageiros_retorna_veiculo_compativel(self):
+        resposta = self.client.get(
+            reverse("disponibilidade"),
+            {
+                "data_hora_saida": self.inicio.isoformat(),
+                "data_hora_retorno": (self.inicio + timedelta(hours=2)).isoformat(),
+                "numero_passageiros": 18,
+            },
+        )
+        codigos = {veiculo["codigo"] for veiculo in resposta.json()["veiculos"]}
+
+        self.assertEqual(resposta.status_code, 200)
+        self.assertEqual(codigos, {self.veiculo_coletivo.codigo})
 
     def test_dashboard_calcula_totais_trimestres_e_tipos(self):
         fuso = timezone.get_current_timezone()

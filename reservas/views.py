@@ -215,6 +215,8 @@ def validar_reserva(reserva, reserva_id=None):
         return resposta_erro("'numero_passageiros' deve ser um número inteiro maior que zero.")
     if reserva.numero_passageiros <= 0:
         return resposta_erro("'numero_passageiros' deve ser maior que zero.")
+    if reserva.numero_passageiros > 18:
+        return resposta_erro("A quantidade de passageiros não pode ser superior a 18.")
     if reserva.numero_passageiros > reserva.veiculo.capacidade:
         return resposta_erro("O número de passageiros excede a capacidade do veículo selecionado.")
 
@@ -249,6 +251,8 @@ def disponibilidade(request):
         return resposta_erro("'numero_passageiros' deve ser um número inteiro maior que zero.")
     if passageiros <= 0:
         return resposta_erro("'numero_passageiros' deve ser maior que zero.")
+    if passageiros > 18:
+        return resposta_erro("A quantidade de passageiros não pode ser superior a 18.")
     intervalo = normalizar_intervalo(saida, retorno)
     if isinstance(intervalo, JsonResponse):
         return intervalo

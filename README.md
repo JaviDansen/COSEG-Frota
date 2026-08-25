@@ -63,6 +63,9 @@ Os tipos de veículo disponíveis são **Veículo Leve (VL)** e **Veículo Colet
 ## Regras de negócio principais
 
 - A quantidade de passageiros deve ser maior que zero.
+- Cada reserva está associada a um único veículo.
+- Nesta versão, a quantidade máxima aceita por reserva é 18 passageiros.
+- Solicitações que necessitem transportar mais de 18 passageiros não são atendidas pelo fluxo atual.
 - A quantidade de passageiros não pode superar a capacidade do veículo.
 - O retorno deve ser posterior à saída.
 - Reservas com saída no passado não são permitidas.
@@ -218,4 +221,4 @@ ProgramacaoWeb/
 
 ## Observação sobre o PBL
 
-Este repositório corresponde à implementação do back-end do PBL 1. A integração com uma interface completa faz parte da evolução posterior do projeto.
+Este repositório corresponde à implementação do back-end do PBL 1. A integração com uma interface completa e o suporte à alocação de múltiplos veículos para uma solicitação fazem parte de evoluções posteriores do projeto.
